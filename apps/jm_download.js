@@ -1,8 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import logger from '../../../lib/logger.js'
-import config from '../config/config.js'
-import { runPythonScript } from './jm_crawler.js'
-import { convertImagesToPDF } from '../model/pdf_converter.js'
+import config from '../../config/config.js'
+import { downloadComic } from '../../model/jm_download.js'
 import fs from 'fs'
 import path from 'path'
 
@@ -17,6 +16,11 @@ export class JMComicDownloader extends plugin {
         {
           reg: '^#jm\\s+(\\d+)$',
           fnc: 'downloadComic',
+          log: false
+        },
+        {
+          reg: '^#jm帮助$',
+          fnc: 'showHelp',
           log: false
         }
       ]
@@ -42,17 +46,10 @@ export class JMComicDownloader extends plugin {
         fs.mkdirSync(downloadDir)
       }
       
-      // 调用Python爬虫
-      const success = await runPythonScript(comicId, downloadDir)
-      if (!success) {
-        await this.reply(`下载失败，请检查ID是否正确或稍后重试`, true)
-        return
-      }
+      // 下载漫画
+      const pdfPath = await downloadComic(comicId, downloadDir)
       
-      // 转换为PDF
-      const pdfPath = await convertImagesToPDF(downloadDir, comicId)
-      
-      // 发送文件
+      // 发送结果
       await this.sendResult(pdfPath, comicId)
       
       // 清理临时文件
@@ -134,5 +131,20 @@ export class JMComicDownloader extends plugin {
       logger.error(`撤回消息失败: ${error.message}`)
       return false
     }
+  }
+  
+  async showHelp() {
+    const helpMsg = [
+      '==== JMComic下载帮助 ====',
+      '#jm <ID> - 下载指定ID的本子',
+      '示例: #jm 123456',
+      '',
+      '注意:',
+      '1. 需要安装Python环境',
+      '2. 需要安装依赖: pip install jmcomic',
+      '3. 大文件将提供下载链接'
+    ].join('\n')
+    
+    await this.reply(helpMsg, true)
   }
 }

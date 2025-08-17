@@ -1,5 +1,5 @@
-import os
 import sys
+import os
 import argparse
 from jmcomic import *
 
